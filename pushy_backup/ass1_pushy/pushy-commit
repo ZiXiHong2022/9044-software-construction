@@ -1,0 +1,118 @@
+#!/bin/dash
+
+#define variblies 
+a_select=false
+Index_d=".pushy/index"
+Commits_d=".pushy/commits"
+commit_msg=''
+commit_next_num=0
+changes=0
+
+#check if the .pushy exist
+if [ ! -d ".pushy" ]; then
+    echo "Error: .pushy directory hasn't been created yet" >&2
+    exit 1
+fi
+
+
+# three cases -m)-a)*)
+if [ ! -d "$Commits_d" ]; then
+    mkdir -p "$Commits_d"
+fi
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -a)
+            a_select=true
+            shift
+            ;;
+        -m)
+            shift
+            commit_msg="$1"
+            break
+            ;;
+        *)
+            echo "Usage: $0 [-a] -m <commit_message>"
+            exit 1
+            ;;
+    esac
+done
+
+
+#commit message is ASCII
+#contain new-line characters
+#start with a - character
+
+if [ -z "$commit_msg" ]; then
+    echo "Error: Commit message is required."
+    exit 1
+
+elif [ "${commit_msg#-}" != "$commit_msg" ]; then
+    echo "Commit message cannot start with '-'."
+    exit 1
+
+
+elif ! printf "%s" "$commit_msg" | LC_ALL=C grep -qP "^[\x20-\x7E]*$"; then
+    echo "Commit message must be ASCII and cannot contain new-line characters."
+    exit 1
+
+fi
+
+
+
+#count next commit number
+if [ -d "$Commits_d" ]; then
+    commit_last_num=$(ls "$Commits_d/" | sort -rn | head -n 1)
+    if [ ! -z "$commit_last_num" ]; then
+        commit_next_num=$((commit_last_num + 1))
+    fi
+fi
+
+
+#copy the file into index path before commit
+
+if $a_select; then
+    for files in $(ls); do
+        if [ -f "$files" ]; then
+            cp "$files" "$Index_d/$files"
+            changes=1
+        fi
+    done  
+fi
+
+
+# compare the file if it changes 
+for file in $Index_d/*; do
+    file_name=$(basename "$file") 
+    if [ -f "$Index_d/$file_name" ]; then  
+        current_sha1sum=$(sha1sum "$Index_d/$file_name" | cut -d ' ' -f1) 
+        if [ -f "$Index_d/$file_name.sha1" ]; then  
+            last_sha1sum=$(cat "$Index_d/$file_name.sha1")
+            if [ "$current_sha1sum" != "$last_sha1sum" ]; then
+                changes=1 #previous sha1sum is different with current ,so it is changed.
+                break
+            
+            fi
+        else 
+            changes=1
+            break
+        fi
+
+    fi
+done
+
+# if its not changes ,then print message out 
+if [ $changes -eq 0 ]; then
+    echo "Nothing to commit."
+    exit 0
+
+else
+
+# make a directory for next commit number
+    mkdir -p "$Commits_d/$commit_next_num"
+    if [ "$(ls -A $Index_d)" ]; then # check if index directory exist
+        cp $Index_d/* "$Commits_d/$commit_next_num/"
+    fi
+    echo "$commit_msg" > "$Commits_d/$commit_next_num/commit_message"
+    echo "Committed as commit $commit_next_num"
+fi

@@ -1,0 +1,60 @@
+#!/bin/dash
+
+option_f=false
+option_c=false
+
+# Parse options
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --force)
+            option_f=true
+            shift
+            ;;
+        --cached)
+            option_c=true
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Process filenames
+for filename in "$@"; do
+    index_file=".pushy/index/$filename"
+    repo_file=$(find .pushy/commits -type f -name "$filename" | sort -r | head -n 1)
+
+    if [ ! -f "$index_file" ]; then
+        if [ -f "$filename" ]; then
+            echo "pushy-rm: error: '$filename' is not in the pushy repository"
+        else
+            echo "pushy-rm: error: '$filename' not found in index and working directory"
+        fi
+        continue
+    fi
+
+    current_sha1sum=$(sha1sum "$filename" 2>/dev/null | cut -d ' ' -f1)
+    index_sha1sum=$(cat "$index_file.sha1" 2>/dev/null)
+
+    if [ -f "$repo_file" ]; then
+        repo_sha1sum=$(sha1sum "$repo_file" | cut -d ' ' -f1)
+    fi
+
+    if ! $option_f; then
+        if [ "$current_sha1sum" != "$index_sha1sum" ]; then
+            if [ "$index_sha1sum" != "$repo_sha1sum" ]; then
+                echo "pushy-rm: error: '$filename' in index is different to both the working file and the repository"
+            else
+                echo "pushy-rm: error: '$filename' has staged changes in the index"
+            fi
+            continue
+        fi
+    fi
+
+    if $option_c; then
+        rm -f "$index_file" "$index_file.sha1"
+    else
+        rm -f "$index_file" "$index_file.sha1" "$filename"
+    fi
+done

@@ -1,0 +1,8 @@
+
+Your `pushy` implementation can put anything it likes in this directory.
+
+Your `.pushy` repository doesn't need to contain a README file.
+
+Your `.pushy` repository should *NOT* contain the .reference directory,
+this is just for the reference implementation.
+

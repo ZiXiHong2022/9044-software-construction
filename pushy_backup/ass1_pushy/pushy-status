@@ -1,0 +1,70 @@
+#!/bin/dash
+
+# define variables 
+Index_d=".pushy/index"
+Commits_d=".pushy/commits"
+latestCommit=$(find "$Commits_d" -type d | sort -r | head -n 1)
+
+# create a list 
+allFiles=""
+
+# collect the file in current directory
+for file in *; do
+    if [ -f "$file" ]; then
+        allFiles="$allFiles $file"
+    fi
+done
+
+# collect filename in index directory
+for file in $Index_d/*; do
+    basename=$(basename "$file")
+    allFiles="$allFiles $basename"
+done
+
+# collect the lastest file in commit directory
+for file in $latestCommit/*; do
+    basename=$(basename "$file")
+    allFiles="$allFiles $basename"
+done
+
+# make whole information in line
+allFiles=$(echo $allFiles | tr ' ' '\n' | sort -u)
+
+# check every argument in line
+for file in $allFiles; do
+    #check if they exist 
+    fileInWorkDir=-f "$file"
+    fileInIndex=-f "$Index_d/$file"
+    fileInCommit=-f "$latestCommit/$file"s
+
+    # calculate the hash values
+    currentHash=$([ -f "$file" ] && sha1sum "$file" 2>/dev/null | cut -d ' ' -f1)
+    indexHash=$([ -f "$indexDir/$file" ] && cat "$indexDir/$file.sha1" 2>/dev/null)
+    commitHash=$([ -f "$latestCommit/$file" ] && sha1sum "$latestCommit/$file" 2>/dev/null | cut -d ' ' -f1)
+
+
+    # create message by files status
+    if [ "$fileInWorkDir" ] && [ ! "$fileInIndex" ] && [ ! "$fileInCommit" ]; then
+        echo "$file - untracked"
+
+    elif [ "$fileInIndex" ] && [ "$workDirHash" != "$indexHash" ]; then
+        echo "$file - file changed, changes not staged for commit"
+
+
+    elif [ "$fileInIndex" ] && [ "$indexHash" != "$commitHash" ]; then
+        echo "$file - file changed, changes staged for commit"
+
+
+
+    elif [ "$fileInIndex" ] && [ ! "$fileInCommit" ]; then
+        echo "$file - added to index"
+
+
+    elif [ ! "$fileInWorkDir" ]; then
+        echo "$file - file deleted"
+
+        
+    else
+        echo "$file - same as repo"
+    fi
+done

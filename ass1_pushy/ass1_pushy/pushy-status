@@ -1,0 +1,37 @@
+#!/bin/dash
+
+# 定义变量
+indexDir=".pushy/index"
+commitsDir=".pushy/commits"
+latestCommit=$(find "$commitsDir" -type d | sort -r | head -n 1)
+
+# 获取所有相关文件列表
+allFiles=$(echo $(ls) $(ls "$indexDir") $(find "$latestCommit" -type f | xargs -n 1 basename) | tr ' ' '\n' | sort -u)
+
+# 遍历文件并判断状态
+for file in $allFiles; do
+    # 检查文件的存在性
+    inWorkDir=[ -f "$file" ]
+    inIndex=[ -f "$indexDir/$file" ]
+    inCommit=[ -f "$latestCommit/$file" ]
+
+    # 计算哈希值
+    currentHash=$([ "$inWorkDir" ] && sha1sum "$file" | cut -d ' ' -f1)
+    indexHash=$([ "$inIndex" ] && cat "$indexDir/$file.sha1")
+    commitHash=$([ "$inCommit" ] && sha1sum "$latestCommit/$file" | cut -d ' ' -f1)
+
+    # 判断文件状态并输出
+    if ! $inIndex && ! $inCommit; then
+        echo "$file - untracked"
+    elif $inIndex && [ "$currentHash" != "$indexHash" ]; then
+        echo "$file - file changed, changes not staged for commit"
+    elif $inIndex && [ "$indexHash" != "$commitHash" ]; then
+        echo "$file - file changed, changes staged for commit"
+    elif $inIndex && ! $inCommit; then
+        echo "$file - added to index"
+    elif ! $inWorkDir; then
+        echo "$file - file deleted"
+    else
+        echo "$file - same as repo"
+    fi
+done

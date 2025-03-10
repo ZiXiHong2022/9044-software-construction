@@ -1,0 +1,34 @@
+#!/bin/dash
+
+# check if pushy repository exist
+if [ ! -d ".pushy" ]; then
+    echo "pushy-add: error: pushy repository directory .pushy not found" >&2
+    exit 1
+fi
+
+if [ ! -d ".pushy/index" ]; then
+    mkdir -p ".pushy/index"
+fi
+
+# make a loop for check all argument
+for filename in "$@"; do
+    # check if the file exist
+    if [ ! -e "$filename" ]; then
+        echo "pushy-add: error: can not open '$filename'" >&2
+        exit 1
+    fi
+
+    # because of bash, use grep to determine the filename
+    echo "$filename" | grep -qE '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'
+    if [ $? -eq 0 ]; then
+        # Copy the file to .pushy/index directory
+        cp "$filename" .pushy/index/
+        
+        # Calculate the sha1sum for the file and save it to a .sha1 file
+        sha1sum "$filename" | cut -d ' ' -f1 > ".pushy/index/$filename.sha1"
+
+    else
+        echo "pushy-add: error: filename should start with an alphanumeric character ([a-zA-Z0-9]) and will only contain alpha-numeric characters, plus ., - and _ characters." >&2
+        exit 1
+    fi
+done

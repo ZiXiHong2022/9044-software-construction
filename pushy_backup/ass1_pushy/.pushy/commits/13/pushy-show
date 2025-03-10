@@ -1,0 +1,39 @@
+#!/bin/dash
+#separate $1 into arguments
+
+filename=$(echo "$1"|cut -d":" -f2)
+commit_num=$(echo "$1"|cut -d":" -f1)
+
+if [ ! -d ".pushy" ]; then
+    echo "pushy-show: error: pushy repository directory .pushy not found" >&2
+    exit 1
+fi 
+
+if [ $# -ne 1 ]; then  
+    echo "usage:pushy-show [commit]:filename "
+    exit 1
+fi 
+
+# condition 1 commit .pushy/commits/[commit]/[filename]
+# condition 2 index .pushy/index/[filename]
+if [ -z "$commit_num" ]; then
+    filepath=".pushy/index/$filename"
+    if [ ! -f "$filepath" ]; then
+        echo "pushy-show: error: '$filename' not found in index" >&2
+        exit 1
+    fi
+else
+   
+    if [ ! -d ".pushy/commits/$commit_num" ]; then
+        echo "pushy-show: error: unknown commit '$commit_num'" >&2
+        exit 1
+    fi
+
+    filepath=".pushy/commits/$commit_num/$filename"
+    if [ ! -f "$filepath" ]; then
+        echo "pushy-show: error: '$filename' not found in commit $commit_num" >&2
+        exit 1
+    fi
+fi
+
+cat "$filepath"
